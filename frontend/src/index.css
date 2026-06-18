@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Phosphor Icons font-size helpers ───────────────────────── */
+.ph, [class*="ph-"] { line-height: 1; }
+
+/* ── Scrollbar fine ─────────────────────────────────────────── */
+.scrollbar-thin::-webkit-scrollbar { width: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #DDE4FF; border-radius: 6px; }
+.dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #1A1A1A; }
+.scrollbar-none::-webkit-scrollbar { width: 0; }
+
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+@keyframes bounce-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-blink   { animation: blink 2s infinite; }
+.animate-bounce-dot { animation: bounce-dot 1.3s infinite; }
+.animate-bounce-dot-2 { animation: bounce-dot 1.3s infinite 0.2s; }
+.animate-bounce-dot-3 { animation: bounce-dot 1.3s infinite 0.4s; }
+.animate-fade-in { animation: fadeIn 0.25s ease; }
+.animate-slide-in { animation: slideIn 0.2s ease; }
+
+/* ── Textarea auto-resize helper ────────────────────────────── */
+textarea { field-sizing: content; min-height: 1.5rem; max-height: 160px; }
+
+/* ── Prose markdown dans les bulles ─────────────────────────── */
+.prose-chat p { margin-bottom: 0.5rem; }
+.prose-chat p:last-child { margin-bottom: 0; }
+.prose-chat ul { list-style: disc; padding-left: 1.2rem; margin-bottom: 0.5rem; }
+.prose-chat ol { list-style: decimal; padding-left: 1.2rem; margin-bottom: 0.5rem; }
+.prose-chat li { margin-bottom: 0.2rem; }
+.prose-chat strong { font-weight: 700; }
+.prose-chat h1,.prose-chat h2,.prose-chat h3 { font-weight: 700; margin-bottom: 0.4rem; margin-top: 0.6rem; }
+.prose-chat hr { border-color: rgba(0,0,0,0.1); margin: 0.6rem 0; }
+.dark .prose-chat hr { border-color: rgba(255,255,255,0.1); }
+.prose-chat code { background: rgba(79,126,255,0.1); border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
+
+/* ── Focus ring accessible ───────────────────────────────────── */
+:focus-visible { outline: 2px solid #4F7EFF; outline-offset: 2px; }
+
+/* ── Supprimer outline navigateur sur les inputs/textarea ───── */
+input:focus, textarea:focus, button:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
