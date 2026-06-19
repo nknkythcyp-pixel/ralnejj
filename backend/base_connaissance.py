@@ -1,12 +1,15 @@
 """
 base_connaissance.py — Base de connaissances RAG avec ChromaDB
-Ralnejj Santé v3
+Ralnejj Santé v3 · Version optimisée Cloud (Hugging Face API)
 """
 import os
 import re
 from pathlib import Path
 import chromadb
 from chromadb.utils import embedding_functions
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 # ── Configuration ────────────────────────────────────────────────
 DOSSIER_DOCS    = Path(__file__).parent / "base_de_connaissances"
@@ -17,11 +20,21 @@ CHEVAUCHEMENT   = 80    # chevauchement entre morceaux
 N_RESULTATS     = 3     # nombre d'extraits retournés par recherche
 
 
-# ── Initialisation ChromaDB ──────────────────────────────────────
-embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="paraphrase-multilingual-MiniLM-L12-v2"
-    # Modèle multilingue : comprend le français ET l'anglais
-)
+# ── Initialisation ChromaDB via API Distante (Léger en RAM) ──────
+# On récupère le token Hugging Face depuis les variables d'environnement
+HF_TOKEN = os.getenv("HUGGINGFACE_API_KEY")
+
+if not HF_TOKEN:
+    print("[RAG ⚠️] HUGGINGFACE_API_KEY manquante. Les embeddings locaux seront utilisés si disponibles.")
+    embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name="paraphrase-multilingual-MiniLM-L12-v2"
+    )
+else:
+    print("[RAG] Mode API Hugging Face activé (Gain de RAM optimal).")
+    embedding_fn = embedding_functions.HuggingFaceEmbeddingFunction(
+        api_key=HF_TOKEN,
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    )
 
 client_chroma = chromadb.PersistentClient(path=str(DOSSIER_CHROMA))
 
@@ -51,20 +64,17 @@ def decouper_en_chunks(texte: str, source: str) -> list[dict]:
     chunk_index  = 0
 
     for para in paragraphes:
-        # Si ajouter ce paragraphe dépasse la taille max
         if len(chunk_actuel) + len(para) > TAILLE_CHUNK and chunk_actuel:
             chunks.append({
                 "texte":  chunk_actuel.strip(),
                 "source": source,
                 "index":  chunk_index,
             })
-            # Chevauchement : garder la fin du chunk précédent
             chunk_actuel = chunk_actuel[-CHEVAUCHEMENT:] + "\n\n" + para
             chunk_index += 1
         else:
             chunk_actuel += ("\n\n" if chunk_actuel else "") + para
 
-    # Dernier chunk
     if chunk_actuel.strip():
         chunks.append({
             "texte":  chunk_actuel.strip(),
@@ -80,13 +90,9 @@ def indexer_documents(forcer: bool = False):
     """
     Charge tous les fichiers .md du dossier base_de_connaissances
     et les indexe dans ChromaDB.
-
-    Args:
-        forcer: Si True, réindexe même si la collection existe déjà
     """
     collection = obtenir_collection()
 
-    # Vérifier si déjà indexé
     if not forcer and collection.count() > 0:
         print(f"[RAG] Collection déjà indexée — {collection.count()} chunks. (forcer=True pour réindexer)")
         return collection
@@ -110,7 +116,7 @@ def indexer_documents(forcer: bool = False):
     for fichier in fichiers_md:
         try:
             texte  = fichier.read_text(encoding="utf-8")
-            source = fichier.stem  # nom sans extension
+            source = fichier.stem
             chunks = decouper_en_chunks(texte, source)
 
             for chunk in chunks:
@@ -125,7 +131,6 @@ def indexer_documents(forcer: bool = False):
             print(f"  ✗ {fichier.name} → ERREUR : {e}")
 
     if tous_ids:
-        # Insérer par batch de 100 (limite ChromaDB)
         batch_size = 100
         for i in range(0, len(tous_ids), batch_size):
             collection.add(
@@ -145,18 +150,7 @@ def chercher_base_connaissance(
     n_resultats: int = N_RESULTATS,
     seuil_pertinence: float = 0.5,
 ) -> str:
-    """
-    Cherche les passages les plus pertinents dans la base de connaissances.
-
-    Args:
-        question:         La question de l'utilisateur
-        n_resultats:      Nombre d'extraits à retourner
-        seuil_pertinence: Distance cosinus max (0=identique, 1=opposé)
-                          On garde seulement les résultats < seuil
-
-    Returns:
-        str: Extraits pertinents formatés, ou chaîne vide si rien trouvé
-    """
+    """Cherche les passages les plus pertinents dans la base de connaissances."""
     try:
         collection = obtenir_collection()
 
@@ -179,7 +173,6 @@ def chercher_base_connaissance(
 
         extraits_pertinents = []
         for doc, meta, dist in zip(documents, metadatas, distances):
-            # Filtrer par pertinence (distance cosinus)
             if dist <= seuil_pertinence:
                 source = meta.get("source", "inconnu").replace("_", " ").title()
                 extraits_pertinents.append(f"📄 **{source}**\n{doc}")
@@ -203,30 +196,15 @@ def chercher_base_connaissance(
 def initialiser_rag():
     """À appeler au démarrage du serveur."""
     print("[RAG] Initialisation de la base de connaissances...")
-    collection = indexer_documents()
-    print(f"[RAG] Prêt — {collection.count()} chunks indexés")
+    collection = obtenir_collection()
+    print(f"[RAG] Prêt — {collection.count()} chunks détectés dans la base.")
     return collection
 
 
-# ── Script standalone (pour tester / réindexer) ─────────────────
 if __name__ == "__main__":
     import sys
     forcer = "--forcer" in sys.argv or "-f" in sys.argv
-
     print("=" * 50)
     print("  Ralnejj — Indexation base de connaissances")
     print("=" * 50)
-
     indexer_documents(forcer=forcer)
-
-    print("\n--- Test de recherche ---")
-    tests = [
-        "traitement traditionnel bilharziose plantes",
-        "fièvre paludisme enfant",
-        "remèdes goyavier diarrhée",
-        "plantes post-partum allaitement",
-    ]
-    for q in tests:
-        print(f"\nQuestion : {q}")
-        res = chercher_base_connaissance(q, n_resultats=2)
-        print(res[:300] + "..." if len(res) > 300 else res or "(aucun résultat)")
