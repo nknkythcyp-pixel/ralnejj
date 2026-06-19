@@ -22,6 +22,10 @@ export default function ChatPage() {
   const [convTitre, setConvTitre]           = useState('')
   const [refreshSidebar, setRefreshSidebar] = useState(0)
   const [mobileOpen, setMobileOpen]         = useState(false)
+
+  // ── hasStarted : true dès le 1er message, false à chaque nouveau chat ──
+  const [hasStarted, setHasStarted] = useState(false)
+
   const messagesEndRef = useRef(null)
   const controllerRef  = useRef(null)
 
@@ -43,9 +47,13 @@ export default function ChatPage() {
   useEffect(() => {
     if (activeConvId) {
       chargerMessages(activeConvId)
+      // Conv existante ouverte → on cache les chips (déjà démarré)
+      setHasStarted(true)
     } else {
       setMessages([])
       setConvTitre('')
+      // Nouveau chat vierge → chips visibles
+      setHasStarted(false)
     }
   }, [activeConvId, chargerMessages])
 
@@ -58,6 +66,7 @@ export default function ChatPage() {
     setActiveConv(null)
     setMessages([])
     setConvTitre('')
+    setHasStarted(false)   // ← chips réapparaissent pour le nouveau chat
     setMobileOpen(false)
   }
 
@@ -118,6 +127,9 @@ export default function ChatPage() {
   ) => {
     if (loading) return
     const convIdDepart = convIdForce ?? activeConvId
+
+    // ── Dès le 1er envoi, chips cachées définitivement jusqu'au prochain nouveau chat
+    setHasStarted(true)
 
     if (suppresserAnciens && ancienMsgId) {
       setMessages((prev) => {
@@ -238,7 +250,7 @@ export default function ChatPage() {
         }`}>
           <div className="flex items-center gap-3">
 
-            {/* Bouton hamburger — visible uniquement mobile, intégré dans le header */}
+            {/* Bouton hamburger — visible uniquement mobile */}
             <button
               onClick={() => setMobileOpen(true)}
               className={`md:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
@@ -286,9 +298,14 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Zone saisie */}
+        {/* Zone saisie — hasStarted passé à InputZone */}
         <div className="flex-shrink-0">
-          <InputZone onEnvoyer={handleEnvoyer} loading={loading} onStop={handleStop} />
+          <InputZone
+            onEnvoyer={handleEnvoyer}
+            loading={loading}
+            onStop={handleStop}
+            hasStarted={hasStarted}
+          />
         </div>
       </div>
     </div>
