@@ -1,12 +1,13 @@
 """
 base_connaissance.py — Base de connaissances RAG avec ChromaDB
-Ralnejj Santé v3 · Version optimisée Cloud (Hugging Face API)
+Ralnejj Santé v3 · Version optimisée Cloud (Hugging Face Router API)
 """
 import os
-import re
+import requests
+import numpy as np
 from pathlib import Path
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb.api.types import EmbeddingFunction
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -15,26 +16,59 @@ load_dotenv(override=True)
 DOSSIER_DOCS    = Path(__file__).parent / "base_de_connaissances"
 DOSSIER_CHROMA  = Path(__file__).parent / "chroma_db"
 NOM_COLLECTION  = "ralnejj_sante"
-TAILLE_CHUNK    = 400   # caractères par morceau
-CHEVAUCHEMENT   = 80    # chevauchement entre morceaux
-N_RESULTATS     = 3     # nombre d'extraits retournés par recherche
+TAILLE_CHUNK    = 400
+CHEVAUCHEMENT   = 80
+N_RESULTATS     = 3
+
+HF_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 
-# ── Initialisation ChromaDB via API Distante (Léger en RAM) ──────
-# On récupère le token Hugging Face depuis les variables d'environnement
+# ── Fonction d'embedding personnalisée via le nouveau routeur HF ─
+# L'ancienne classe HuggingFaceEmbeddingFunction de chromadb utilise
+# une URL dépréciée (api-inference.huggingface.co). On utilise donc
+# directement le nouveau endpoint officiel : router.huggingface.co
+class HFRouterEmbeddingFunction(EmbeddingFunction):
+    def __init__(self, api_key: str, model_name: str = HF_MODEL):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.url = (
+            f"https://router.huggingface.co/hf-inference/models/"
+            f"{model_name}/pipeline/feature-extraction"
+        )
+        self.headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def __call__(self, input):
+        # 'input' est la liste de textes à transformer en embeddings
+        try:
+            response = requests.post(
+                self.url,
+                headers=self.headers,
+                json={"inputs": input, "options": {"wait_for_model": True}},
+                timeout=30,
+            )
+            response.raise_for_status()
+            data = response.json()
+            return [np.array(vec, dtype=np.float32) for vec in data]
+        except Exception as e:
+            print(f"[RAG] Erreur appel Hugging Face Router API : {e}")
+            raise
+
+
+# ── Initialisation de la fonction d'embedding ─────────────────────
 HF_TOKEN = os.getenv("HUGGINGFACE_API_KEY")
 
 if not HF_TOKEN:
-    print("[RAG ⚠️] HUGGINGFACE_API_KEY manquante. Les embeddings locaux seront utilisés si disponibles.")
+    print("[RAG ⚠️] HUGGINGFACE_API_KEY manquante. Tentative avec embeddings locaux...")
+    from chromadb.utils import embedding_functions
     embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
         model_name="paraphrase-multilingual-MiniLM-L12-v2"
     )
 else:
-    print("[RAG] Mode API Hugging Face activé (Gain de RAM optimal).")
-    embedding_fn = embedding_functions.HuggingFaceEmbeddingFunction(
-        api_key=HF_TOKEN,
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    )
+    print("[RAG] Mode API Hugging Face Router activé (Gain de RAM optimal).")
+    embedding_fn = HFRouterEmbeddingFunction(api_key=HF_TOKEN, model_name=HF_MODEL)
 
 client_chroma = chromadb.PersistentClient(path=str(DOSSIER_CHROMA))
 
@@ -50,14 +84,8 @@ def obtenir_collection():
 
 # ── Découpage en chunks ──────────────────────────────────────────
 def decouper_en_chunks(texte: str, source: str) -> list[dict]:
-    """
-    Découpe un texte en morceaux avec chevauchement.
-    Essaie de couper aux fins de paragraphes pour garder le sens.
-    """
     chunks = []
     texte  = texte.strip()
-
-    # Découper d'abord par paragraphes (double saut de ligne)
     paragraphes = [p.strip() for p in texte.split("\n\n") if p.strip()]
 
     chunk_actuel = ""
@@ -87,10 +115,6 @@ def decouper_en_chunks(texte: str, source: str) -> list[dict]:
 
 # ── Indexation des documents ─────────────────────────────────────
 def indexer_documents(forcer: bool = False):
-    """
-    Charge tous les fichiers .md du dossier base_de_connaissances
-    et les indexe dans ChromaDB.
-    """
     collection = obtenir_collection()
 
     if not forcer and collection.count() > 0:
@@ -109,8 +133,8 @@ def indexer_documents(forcer: bool = False):
 
     print(f"[RAG] Indexation de {len(fichiers_md)} fichiers...")
 
-    tous_ids      = []
-    tous_textes   = []
+    tous_ids       = []
+    tous_textes    = []
     tous_metadatas = []
 
     for fichier in fichiers_md:
@@ -131,15 +155,20 @@ def indexer_documents(forcer: bool = False):
             print(f"  ✗ {fichier.name} → ERREUR : {e}")
 
     if tous_ids:
-        batch_size = 100
-        for i in range(0, len(tous_ids), batch_size):
-            collection.add(
-                ids=tous_ids[i:i+batch_size],
-                documents=tous_textes[i:i+batch_size],
-                metadatas=tous_metadatas[i:i+batch_size],
-            )
+        try:
+            # Batch plus petit pour l'API HF (évite timeout / payload trop gros)
+            batch_size = 32
+            for i in range(0, len(tous_ids), batch_size):
+                collection.add(
+                    ids=tous_ids[i:i+batch_size],
+                    documents=tous_textes[i:i+batch_size],
+                    metadatas=tous_metadatas[i:i+batch_size],
+                )
+                print(f"  → batch {i//batch_size + 1}/{(len(tous_ids)-1)//batch_size + 1} indexé")
 
-        print(f"[RAG] ✅ Indexation terminée — {len(tous_ids)} chunks au total")
+            print(f"[RAG] ✅ Indexation terminée — {len(tous_ids)} chunks au total")
+        except Exception as e:
+            print(f"[RAG ERREUR INDEXATION] {e}")
 
     return collection
 
@@ -150,13 +179,17 @@ def chercher_base_connaissance(
     n_resultats: int = N_RESULTATS,
     seuil_pertinence: float = 0.5,
 ) -> str:
-    """Cherche les passages les plus pertinents dans la base de connaissances."""
     try:
         collection = obtenir_collection()
 
         if collection.count() == 0:
             print("[RAG] Collection vide — indexation en cours...")
             indexer_documents()
+            collection = obtenir_collection()
+
+        if collection.count() == 0:
+            print("[RAG] Indexation échouée — collection toujours vide.")
+            return ""
 
         resultats = collection.query(
             query_texts=[question],
