@@ -485,7 +485,7 @@ async def transcription(
     except Exception as e:
         print(f"[ERREUR TRANSCRIPTION] {e}")
         raise HTTPException(status_code=500, detail=f"Erreur transcription : {str(e)}")
-    default:
+    finally:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
 
