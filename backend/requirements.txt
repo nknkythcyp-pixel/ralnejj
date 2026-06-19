@@ -13,3 +13,5 @@ chromadb
 cryptography
 pydantic-settings
 pymysql
+langgraph
+langchain-core
