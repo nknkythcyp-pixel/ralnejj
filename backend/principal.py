@@ -27,6 +27,8 @@ from database import (
     sauvegarder_feedback,
     rechercher_messages,
     get_utilisateur,
+    get_utilisateur_by_email,  # ← Ajouté pour l'inscription sécurisée
+    creer_utilisateur,         # ← Ajouté pour l'inscription sécurisée
 )
 from agent import executer_agent, executer_agent_stream
 from auth import hasher_mot_de_passe, verifier_mot_de_passe, creer_token
@@ -38,13 +40,9 @@ from extraction_fichiers import extraire_fichier
 app = FastAPI(title=APP_NOM, version=APP_VERSION)
 
 # ── CORS : dev local + production ─────────────────────────────────
-# En local : "*" continue de fonctionner comme avant si FRONTEND_URL
-# n'est pas définie. En production sur Render, on définira FRONTEND_URL
-# pour restreindre l'accès uniquement à ton frontend Vercel.
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 if FRONTEND_URL and FRONTEND_URL.strip():
-    # Mode production : origines précises (obligatoire pour les cookies/JWT)
     ORIGINES_AUTORISEES = [
         FRONTEND_URL.strip(),
         "http://localhost:5173",
@@ -53,7 +51,6 @@ if FRONTEND_URL and FRONTEND_URL.strip():
     ]
     ALLOW_CREDENTIALS = True
 else:
-    # Mode dev local : comportement identique à l'original (tout autorisé)
     ORIGINES_AUTORISEES = ["*"]
     ALLOW_CREDENTIALS = False
 
@@ -142,10 +139,6 @@ async def racine():
 
 @app.get("/ping")
 async def ping():
-    """
-    Endpoint léger pour UptimeRobot — maintient le serveur éveillé
-    sur les plans gratuits (Render, etc.) sans toucher la base de données.
-    """
     return {"ping": "pong"}
 
 
@@ -154,24 +147,20 @@ async def ping():
 # ════════════════════════════════════════════════════════════════
 @app.post("/inscription")
 async def inscription(requete: RequeteInscription):
-    conn = get_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Erreur base de données.")
     try:
-        c = conn.cursor(dictionary=True)
-        c.execute("SELECT id FROM utilisateurs WHERE email = %s", (requete.email,))
-        if c.fetchone():
+        # 1. Vérifier si l'utilisateur existe déjà via database.py
+        user_existant = get_utilisateur_by_email(requete.email)
+        if user_existant:
             raise HTTPException(status_code=400, detail="Cet email est déjà utilisé.")
 
+        # 2. Hasher le mot de passe et créer l'utilisateur
         hash_mdp = hasher_mot_de_passe(requete.mot_de_passe)
-        c.execute(
-            "INSERT INTO utilisateurs (nom, email, mot_de_passe) VALUES (%s, %s, %s)",
-            (requete.nom, requete.email, hash_mdp)
-        )
-        utilisateur_id = c.lastrowid
-        c.close()
-        conn.close()
+        utilisateur_id = creer_utilisateur(requete.nom, requete.email, hash_mdp)
+        
+        if not utilisateur_id:
+            raise HTTPException(status_code=500, detail="Erreur lors de la création du compte en base de données.")
 
+        # 3. Générer le JWT Token
         token = creer_token({"sub": str(utilisateur_id), "email": requete.email})
         return {
             "token": token,
@@ -496,7 +485,7 @@ async def transcription(
     except Exception as e:
         print(f"[ERREUR TRANSCRIPTION] {e}")
         raise HTTPException(status_code=500, detail=f"Erreur transcription : {str(e)}")
-    finally:
+    default:
         if tmp_path and os.path.exists(tmp_path):
             os.remove(tmp_path)
 
@@ -554,10 +543,6 @@ async def upload_pdf(fichier: UploadFile = File(...)):
     return await upload_fichier(fichier)
 
 
-# ════════════════════════════════════════════════════════════════
-# LANCEMENT
-# En local : ce bloc est exécuté. En production (Render/Clever),
-# c'est la Start Command qui lance uvicorn — ce bloc n'est pas utilisé.
-# ════════════════════════════════════════════════════════════════
+# ── Lancements ───────────────────────────────────────────────────
 if __name__ == "__main__":
     uvicorn.run("principal:app", host="127.0.0.1", port=8000, reload=True)

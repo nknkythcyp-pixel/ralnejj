@@ -266,4 +266,36 @@ def get_utilisateur(utilisateur_id: int):
         return None
     finally:
         conn.close()
-        
+
+def get_utilisateur_by_email(email: str):
+    conn = get_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor(dictionary=True) as c:
+            c.execute("SELECT * FROM utilisateurs WHERE email = %s", (email,))
+            return c.fetchone()
+    except Error as e:
+        print(f"[DB ERREUR] get_utilisateur_by_email : {e}")
+        return None
+    finally:
+        conn.close()
+
+def creer_utilisateur(nom: str, email: str, mot_de_passe_hashe: str):
+    conn = get_connection()
+    if not conn:
+        return None
+    try:
+        with conn.cursor() as c:
+            c.execute(
+                "INSERT INTO utilisateurs (nom, email, mot_de_passe) VALUES (%s, %s, %s)",
+                (nom, email, mot_de_passe_hashe)
+            )
+            user_id = c.lastrowid
+            conn.commit()
+            return user_id
+    except Error as e:
+        print(f"[DB ERREUR] creer_utilisateur : {e}")
+        return None
+    finally:
+        conn.close()

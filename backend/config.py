@@ -25,9 +25,10 @@ DB_CONFIG = {
     "autocommit": True,
 }
 
-# Force le mode SSL obligatoire exigé par les serveurs distants Aiven
+# Configuration SSL correcte pour mysql-connector-python sur Aiven Cloud
 if "aivencloud.com" in DB_HOST:
-    DB_CONFIG["ssl_mode"] = "REQUIRED"
+    # Au lieu de ssl_mode, on demande au connecteur d'activer le SSL pur
+    DB_CONFIG["ssl_disabled"] = False
 
 # ── JWT ─────────────────────────────────────────────────────────
 SECRET_KEY               = os.getenv("SECRET_KEY", "ralnejj_secret_2026")
