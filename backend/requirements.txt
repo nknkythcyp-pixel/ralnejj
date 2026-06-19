@@ -8,6 +8,7 @@ cryptography
 tavily-python
 passlib
 bcrypt
+python-jose[cryptography]
 
 # LangChain & Groq ecosystem
 langchain
