@@ -226,12 +226,22 @@ def chercher_base_connaissance(
 
 
 # ── Lancement au démarrage ───────────────────────────────────────
+# Dans base_connaissance.py, cherche la fonction initialiser_rag()
 def initialiser_rag():
-    """À appeler au démarrage du serveur."""
-    print("[RAG] Initialisation de la base de connaissances...")
-    collection = obtenir_collection()
-    print(f"[RAG] Prêt — {collection.count()} chunks détectés dans la base.")
-    return collection
+    print("[RAG] Initialisation de la base...")
+    try:
+        # Ajoute un test de chemin pour t'assurer que le dossier existe
+        path = str(DOSSIER_CHROMA)
+        os.makedirs(path, exist_ok=True) 
+        
+        collection = obtenir_collection()
+        if collection.count() == 0:
+            print("[RAG] Collection vide détectée, indexation...")
+            indexer_documents()
+        return collection
+    except Exception as e:
+        print(f"[RAG CRITICAL] Erreur d'initialisation : {e}")
+        return None
 
 
 if __name__ == "__main__":
