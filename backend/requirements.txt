@@ -5,6 +5,8 @@ pydantic-settings
 python-dotenv
 mysql-connector-python
 cryptography
+sentence-transformers
+travily-python
 
 # LangChain & Groq ecosystem
 langchain
