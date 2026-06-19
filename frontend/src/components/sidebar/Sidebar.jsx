@@ -369,10 +369,10 @@ export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger, mobil
         </div>
       </div>
 
-      {/* Handle de redimensionnement */}
+      {/* Handle de redimensionnement — desktop uniquement */}
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 right-0 w-1 h-full cursor-col-resize z-20 hover:bg-[#4F7EFF]/30 transition-colors"
+        className="hidden md:block absolute top-0 right-0 w-1 h-full cursor-col-resize z-20 hover:bg-[#4F7EFF]/30 transition-colors"
       />
     </div>
   )
