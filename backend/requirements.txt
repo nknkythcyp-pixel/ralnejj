@@ -4,3 +4,10 @@ pydantic
 mysql-connector-python
 python-multipart
 python-dotenv
+tavily-python
+openai
+pypdf
+docx2txt
+openpyxl
+chromadb
+cryptography
