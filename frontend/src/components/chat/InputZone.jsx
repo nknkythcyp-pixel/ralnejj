@@ -1,11 +1,10 @@
 /**
  * InputZone.jsx — Zone de saisie du chat Ralnejj Santé v3
  *
- * Modifications v3.1 :
- *  - Zone de saisie plus compacte (py-1 au lieu de py-1.5)
- *  - Bouton envoi : dégradé bleu nuit (#040d22 → #1d4ed8) en thème clair
- *  - Menu attachement : 4 options (Photo, Image, PDF/Word, Excel)
- *  - Responsive mobile → desktop
+ * Modifications v3.2 :
+ *  - Les chips de suggestions disparaissent DÉFINITIVEMENT après le premier
+ *    message envoyé (prop hasStarted), et ne reviennent qu'au "Nouveau chat".
+ *  - Chips en défilement HORIZONTAL sur mobile (plus d'empilement vertical).
  */
 
 import { useState, useRef, useEffect } from 'react'
@@ -56,7 +55,7 @@ const OPTIONS_MENU = [
 // Dégradé bouton envoi thème clair — identique sidebar
 const GRAD_BTN = 'linear-gradient(135deg, #040d22 0%, #1d4ed8 100%)'
 
-export default function InputZone({ onEnvoyer, loading, suggestions = [], onStop }) {
+export default function InputZone({ onEnvoyer, loading, suggestions = [], onStop, hasStarted = false }) {
   const theme  = useStore((s) => s.theme)
   const user   = useStore((s) => s.user)
   const isDark = theme === 'dark'
@@ -230,16 +229,20 @@ export default function InputZone({ onEnvoyer, loading, suggestions = [], onStop
 
   const formatDuree = (s) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
+  // ── Chips visibles UNIQUEMENT avant le premier message ────────
+  // (hasStarted devient true dès l'envoi et reste true jusqu'au "Nouveau chat")
+  const afficherChips = !hasStarted && !loading && !enregistrement && !texte.trim() && !fichierJoint
+
   return (
     <div className={isDark ? 'bg-black' : 'bg-[#F7F9FF]'}>
 
-      {/* ── Chips suggestions ────────────────────────────────── */}
-      {!loading && !enregistrement && !texte.trim() && !fichierJoint && (
-        <div className="flex flex-wrap gap-1.5 px-4 pb-2 pt-1">
+      {/* ── Chips suggestions — scroll HORIZONTAL sur mobile ──── */}
+      {afficherChips && (
+        <div className="flex gap-1.5 px-4 pb-2 pt-1 overflow-x-auto scrollbar-none flex-nowrap md:flex-wrap">
           {chips.map((chip, i) => (
             <button key={i}
               onClick={() => { setTexte(chip); textareaRef.current?.focus() }}
-              className={`px-3.5 py-1.5 rounded-full text-[11.5px] font-medium transition-colors ${
+              className={`flex-shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-full text-[11.5px] font-medium transition-colors ${
                 isDark
                   ? 'bg-transparent border border-[#222] text-[#ECECEC] hover:bg-[#111]'
                   : 'bg-white border border-[#DDE4FF] text-[#1d4ed8] hover:bg-[#EEF2FF]'

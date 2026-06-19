@@ -21,6 +21,9 @@ export default function ChatPage() {
   const [loading, setLoading]                 = useState(false)
   const [convTitre, setConvTitre]             = useState('')
   const [refreshSidebar, setRefreshSidebar]   = useState(0)
+  // ← NOUVEAU : une fois vrai, les chips ne réapparaissent plus
+  //   jusqu'à "Nouveau chat" ou changement de conversation.
+  const [hasStarted, setHasStarted]           = useState(false)
   const messagesEndRef = useRef(null)
   const controllerRef  = useRef(null)
 
@@ -42,9 +45,11 @@ export default function ChatPage() {
   useEffect(() => {
     if (activeConvId) {
       chargerMessages(activeConvId)
+      setHasStarted(true) // ouvrir une conv existante = déjà "démarrée"
     } else {
       setMessages([])
       setConvTitre('')
+      setHasStarted(false) // nouvelle conv vide → chips visibles
     }
   }, [activeConvId, chargerMessages])
 
@@ -54,6 +59,7 @@ export default function ChatPage() {
     setActiveConv(null)
     setMessages([])
     setConvTitre('')
+    setHasStarted(false) // ← réinitialise les chips pour le nouveau chat
   }
 
   const typewriterQueue = useRef('')
@@ -121,6 +127,9 @@ export default function ChatPage() {
     if (loading) return
 
     const convIdDepart = convIdForce ?? activeConvId
+
+    // ← Dès le premier envoi, les chips disparaissent pour de bon
+    setHasStarted(true)
 
     if (suppresserAnciens && ancienMsgId) {
       setMessages((prev) => {
@@ -242,12 +251,13 @@ export default function ChatPage() {
 
       <div className="flex-1 flex flex-col min-w-0 h-full">
 
-        {/* Header */}
-        <div className={`flex items-center justify-between px-5 py-3 flex-shrink-0 ${
+        {/* Header — fixe en haut, contient le hamburger mobile (rendu par Sidebar) */}
+        <div className={`flex items-center justify-between px-5 py-3 flex-shrink-0 relative z-30 ${
           isDark
             ? 'bg-[#0A0A0A] border-b border-[#1A1A1A]'
             : 'bg-white border-b border-[#E2E8FF]'
         }`}>
+          {/* pl-12 réserve la place pour le bouton hamburger en position fixed (mobile) */}
           <div className="flex items-center gap-3 pl-12 md:pl-0">
             <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 ${isDark ? 'bg-[#1A1A1A]' : 'bg-[#EEF3FF]'}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-orange-400 animate-pulse' : isDark ? 'bg-[#4F7EFF] animate-blink' : 'bg-[#1d4ed8] animate-blink'}`} />
@@ -291,6 +301,7 @@ export default function ChatPage() {
             onEnvoyer={handleEnvoyer}
             loading={loading}
             onStop={handleStop}
+            hasStarted={hasStarted}
           />
         </div>
       </div>
