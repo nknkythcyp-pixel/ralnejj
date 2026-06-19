@@ -9,6 +9,7 @@ tavily-python
 passlib
 bcrypt
 python-jose[cryptography]
+pypdf
 
 # LangChain & Groq ecosystem
 langchain
