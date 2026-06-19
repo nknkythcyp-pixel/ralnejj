@@ -6,6 +6,7 @@ python-dotenv
 mysql-connector-python
 cryptography
 tavily-python
+passlib
 
 # LangChain & Groq ecosystem
 langchain
