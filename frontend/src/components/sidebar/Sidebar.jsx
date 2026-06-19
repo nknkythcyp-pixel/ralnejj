@@ -32,7 +32,7 @@ const MIN_WIDTH = 180
 const MAX_WIDTH = 360
 const DEFAULT_WIDTH = 228
 
-export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger }) {
+export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger, mobileOpen, setMobileOpen }) {
   const navigate     = useNavigate()
   const user         = useStore((s) => s.user)
   const logout       = useStore((s) => s.logout)
@@ -50,7 +50,6 @@ export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger }) {
   const [menuConvId, setMenuConvId]       = useState(null)
   const [renomId, setRenomId]             = useState(null)
   const [renomVal, setRenomVal]           = useState('')
-  const [mobileOpen, setMobileOpen]       = useState(false)
   const [sidebarWidth, setSidebarWidth]   = useState(DEFAULT_WIDTH)
   const menuRef    = useRef(null)
   const isDragging = useRef(false)
@@ -379,30 +378,12 @@ export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger }) {
   )
 
   return (
-    <>
-      {/* Desktop */}
-      <div
-        className="hidden md:flex h-full flex-col flex-shrink-0 relative"
-        style={{ width: sidebarWidth }}
-      >
-        {sidebarContent}
-      </div>
-
-      {/* Mobile */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className={`md:hidden fixed top-4 left-4 z-40 w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg ${isDark ? 'bg-[#111] text-[#ECECEC]' : 'text-white'}`}
-        style={!isDark ? { background: '#040d22' } : undefined}
-      >
-        <i className="ph ph-list text-lg" />
-      </button>
-      {mobileOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
-          <div className="w-[260px] h-full">{sidebarContent}</div>
-          <div className="flex-1 bg-black/50" onClick={() => setMobileOpen(false)} />
-        </div>
-      )}
-    </>
+    <div
+      className="h-full flex flex-col flex-shrink-0 relative"
+      style={{ width: sidebarWidth }}
+    >
+      {sidebarContent}
+    </div>
   )
 }
 
