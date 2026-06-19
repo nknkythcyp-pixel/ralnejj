@@ -6,7 +6,7 @@ python-dotenv
 mysql-connector-python
 cryptography
 sentence-transformers
-travily-python
+tavily-python
 
 # LangChain & Groq ecosystem
 langchain
