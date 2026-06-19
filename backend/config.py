@@ -9,9 +9,14 @@ GROQ_MODEL         = "llama-3.3-70b-versatile"          # texte
 GROQ_VISION_MODEL  = "meta-llama/llama-4-scout-17b-16e-instruct"  # images
 GROQ_WHISPER_MODEL = "whisper-large-v3"                 # audio
 
+# ── Tavily (Recherche Web) ──────────────────────────────────────
+TAVILY_API_KEY     = os.getenv("TAVILY_API_KEY", "")
+
 # ── MySQL ────────────────────────────────────────────────────────
+DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
+
 DB_CONFIG = {
-    "host":       os.getenv("DB_HOST",     "127.0.0.1"),
+    "host":       DB_HOST,
     "port":       int(os.getenv("DB_PORT", 3306)),
     "user":       os.getenv("DB_USER",     "root"),
     "password":   os.getenv("DB_PASSWORD", ""),
@@ -20,6 +25,10 @@ DB_CONFIG = {
     "autocommit": True,
 }
 
+# Force le mode SSL obligatoire exigé par les serveurs distants Aiven
+if "aivencloud.com" in DB_HOST:
+    DB_CONFIG["ssl_mode"] = "REQUIRED"
+
 # ── JWT ─────────────────────────────────────────────────────────
 SECRET_KEY               = os.getenv("SECRET_KEY", "ralnejj_secret_2026")
 ALGORITHM                = os.getenv("ALGORITHM",  "HS256")
@@ -27,4 +36,4 @@ TOKEN_EXPIRATION_MINUTES = int(os.getenv("TOKEN_EXPIRATION_MINUTES", 1440))
 
 # ── App ──────────────────────────────────────────────────────────
 APP_NOM     = os.getenv("APP_NOM",     "Ralnejj Santé")
-APP_VERSION = os.getenv("APP_VERSION", "2.0.0")
+APP_VERSION = os.getenv("APP_VERSION", "3.0.0")
