@@ -232,8 +232,8 @@ export default function ChatPage() {
       {/* Zone principale */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
 
-        {/* Header — sticky, toujours en haut */}
-        <div className={`flex items-center justify-between px-4 py-3 flex-shrink-0 sticky top-0 z-30 ${
+        {/* Header — fixed mobile, sticky desktop */}
+        <div className={`flex items-center justify-between px-4 py-3 flex-shrink-0 fixed top-0 left-0 right-0 z-30 md:sticky md:relative md:top-auto md:left-auto md:right-auto ${
           isDark ? 'bg-[#0A0A0A] border-b border-[#1A1A1A]' : 'bg-white border-b border-[#E2E8FF]'
         }`}>
           <div className="flex items-center gap-3">
@@ -271,7 +271,7 @@ export default function ChatPage() {
         </div>
 
         {/* Zone messages */}
-        <div className={`flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-3.5 scrollbar-thin ${
+        <div className={`flex-1 overflow-y-auto px-4 py-5 pt-20 md:pt-5 flex flex-col gap-3.5 scrollbar-thin ${
           isDark ? 'bg-black' : 'bg-[#F7F9FF]'
         }`}>
           {affichageMessages.map((msg, i) => (

@@ -380,7 +380,7 @@ export default function Sidebar({ onSelectConv, onNewConv, refreshTrigger, mobil
   return (
     <div
       className="h-full flex flex-col flex-shrink-0 relative"
-      style={{ width: sidebarWidth }}
+      style={{ width: typeof window !== 'undefined' && window.innerWidth >= 768 ? sidebarWidth : '100%' }}
     >
       {sidebarContent}
     </div>
