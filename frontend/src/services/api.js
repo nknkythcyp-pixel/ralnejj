@@ -1,13 +1,17 @@
 /**
  * api.js — Service API Ralnejj Santé v3
  * Toutes les fonctions d'appel au backend FastAPI
- * Base URL : http://127.0.0.1:8000
+ * Version dynamique configurée pour Render & Vercel
  */
 
 import axios from 'axios'
 
+// Détection de l'URL du backend (Render en production, local en développement)
+// Remplace VITE_API_URL par NEXT_PUBLIC_API_URL ou REACT_APP_API_URL selon ton framework
+const BACKEND_URL = import.meta.env.VITE_API_URL || import.meta.env.NEXT_PUBLIC_API_URL || import.meta.env.REACT_APP_API_URL || 'http://127.0.0.1:8000'
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000',
+  baseURL: BACKEND_URL,
   timeout: 30000,
 })
 
@@ -36,7 +40,6 @@ export const supprimerCompte = (id)      => api.delete(`/utilisateurs/${id}`)
 export const envoyerMessage = (data) => api.post('/chat', data)
 
 // ── Chat streaming SSE (POST /chat/stream) ────────────────────
-// Retourne un AbortController pour pouvoir annuler la requête
 export const streamMessage = (data, onDelta, onDone, onError) => {
   let token = null
   try {
@@ -49,7 +52,8 @@ export const streamMessage = (data, onDelta, onDone, onError) => {
 
   const controller = new AbortController()
 
-  fetch('http://127.0.0.1:8000/chat/stream', {
+  // Utilisation de BACKEND_URL au lieu de l'adresse IP en dur
+  fetch(`${BACKEND_URL}/chat/stream`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -69,10 +73,8 @@ export const streamMessage = (data, onDelta, onDone, onError) => {
         const { done, value } = await reader.read()
         if (done) break
 
-        // stream: true → gère les accents coupés entre deux chunks
         buffer += decoder.decode(value, { stream: true })
 
-        // Les événements SSE sont séparés par "\n\n"
         let sepIndex
         while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
           const rawEvent = buffer.slice(0, sepIndex)
@@ -127,7 +129,6 @@ export const rechercherMessages = (uid, q) =>
   api.get(`/recherche/${uid}?q=${encodeURIComponent(q)}`)
 
 // ── Upload fichier (PDF, Word, Excel, Image) ──────────────────
-// Route backend : POST /upload-fichier
 export const uploaderFichier = (fichier) => {
   const formData = new FormData()
   formData.append('fichier', fichier)
@@ -138,7 +139,6 @@ export const uploaderFichier = (fichier) => {
 }
 
 // ── Transcription audio (notes vocales) ───────────────────────
-// Route backend : POST /transcription
 export const transcrireAudio = (blob, langue = 'fr') => {
   const formData = new FormData()
   const ext = blob.type.includes('mp4') ? 'mp4' : 'webm'
