@@ -1,5 +1,6 @@
 """
 principal.py — Serveur FastAPI Ralnejj Santé v3
+Compatible dev local ET production (Render / Clever Cloud)
 """
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,10 +37,30 @@ from extraction_fichiers import extraire_fichier
 # ── Application ──────────────────────────────────────────────────
 app = FastAPI(title=APP_NOM, version=APP_VERSION)
 
+# ── CORS : dev local + production ─────────────────────────────────
+# En local : "*" continue de fonctionner comme avant si FRONTEND_URL
+# n'est pas définie. En production sur Render, on définira FRONTEND_URL
+# pour restreindre l'accès uniquement à ton frontend Vercel.
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
+if FRONTEND_URL and FRONTEND_URL.strip():
+    # Mode production : origines précises (obligatoire pour les cookies/JWT)
+    ORIGINES_AUTORISEES = [
+        FRONTEND_URL.strip(),
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+    ]
+    ALLOW_CREDENTIALS = True
+else:
+    # Mode dev local : comportement identique à l'original (tout autorisé)
+    ORIGINES_AUTORISEES = ["*"]
+    ALLOW_CREDENTIALS = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=ORIGINES_AUTORISEES,
+    allow_credentials=ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -107,8 +128,8 @@ async def demarrage():
     print(f"\n{'='*50}")
     print(f"  {APP_NOM} v{APP_VERSION}")
     print(f"{'='*50}")
-    print(f"[OK] Serveur prêt   → http://127.0.0.1:8000")
-    print(f"[OK] Docs           → http://127.0.0.1:8000/docs\n")
+    print(f"[OK] Serveur prêt")
+    print(f"[OK] Origines CORS autorisées : {ORIGINES_AUTORISEES}\n")
 
 
 # ════════════════════════════════════════════════════════════════
@@ -117,6 +138,15 @@ async def demarrage():
 @app.get("/")
 async def racine():
     return {"status": "ok", "app": APP_NOM, "version": APP_VERSION}
+
+
+@app.get("/ping")
+async def ping():
+    """
+    Endpoint léger pour UptimeRobot — maintient le serveur éveillé
+    sur les plans gratuits (Render, etc.) sans toucher la base de données.
+    """
+    return {"ping": "pong"}
 
 
 # ════════════════════════════════════════════════════════════════
@@ -524,6 +554,10 @@ async def upload_pdf(fichier: UploadFile = File(...)):
     return await upload_fichier(fichier)
 
 
-# ── Lancement ────────────────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════
+# LANCEMENT
+# En local : ce bloc est exécuté. En production (Render/Clever),
+# c'est la Start Command qui lance uvicorn — ce bloc n'est pas utilisé.
+# ════════════════════════════════════════════════════════════════
 if __name__ == "__main__":
     uvicorn.run("principal:app", host="127.0.0.1", port=8000, reload=True)

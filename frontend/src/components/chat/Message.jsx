@@ -1,3 +1,13 @@
+/**
+ * Message.jsx — Bulle de message Ralnejj Santé v3
+ *
+ * Thème clair :
+ *  - Bulle utilisateur : même dégradé bleu nuit que la sidebar (#040d22)
+ *  - Avatar utilisateur : même couleur (#040d22)
+ *  - Avatar IA : même couleur (#040d22)
+ * Thème sombre : comportement inchangé
+ */
+
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useState, memo, useRef, useEffect } from 'react'
@@ -11,17 +21,20 @@ function Message({ msg, isLast, onModifier }) {
   const isDark = theme === 'dark'
   const langue = user?.langue || 'fr'
 
-  const isUser      = msg.role === 'user'
-  const isStreaming  = typeof msg.id === 'string' && msg.id.startsWith('stream-')
-  const [vote, setVote]         = useState(null)
-  const [enEdition, setEnEdition] = useState(false)
+  const isUser     = msg.role === 'user'
+  const isStreaming = typeof msg.id === 'string' && msg.id.startsWith('stream-')
+
+  const [vote, setVote]             = useState(null)
+  const [enEdition, setEnEdition]   = useState(false)
   const [texteEdite, setTexteEdite] = useState(msg.contenu)
   const textareaRef = useRef(null)
 
+  // Initiales de l'avatar utilisateur
   const initiales = user?.nom
     ? user.nom.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2)
     : 'U'
 
+  // Auto-resize du textarea en mode édition
   useEffect(() => {
     if (enEdition && textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -32,6 +45,7 @@ function Message({ msg, isLast, onModifier }) {
     }
   }, [enEdition])
 
+  // ── Feedback (pouce haut/bas) ────────────────────────────────
   const handleVote = async (val) => {
     if (vote === val) return
     setVote(val)
@@ -41,11 +55,13 @@ function Message({ msg, isLast, onModifier }) {
     } catch (_) {}
   }
 
+  // ── Copier le message ────────────────────────────────────────
   const handleCopy = () => {
     navigator.clipboard.writeText(msg.contenu)
     toast.success('Copié !')
   }
 
+  // ── Édition message utilisateur ──────────────────────────────
   const handleClickModifier = () => {
     setTexteEdite(msg.contenu)
     setEnEdition(true)
@@ -58,48 +74,43 @@ function Message({ msg, isLast, onModifier }) {
 
   const handleEnvoyerModification = () => {
     const nouveau = texteEdite.trim()
-    if (!nouveau || nouveau === msg.contenu) {
-      setEnEdition(false)
-      return
-    }
+    if (!nouveau || nouveau === msg.contenu) { setEnEdition(false); return }
     setEnEdition(false)
     onModifier?.(msg, nouveau)
   }
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleEnvoyerModification()
-    }
-    if (e.key === 'Escape') {
-      handleAnnulerEdition()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEnvoyerModification() }
+    if (e.key === 'Escape') handleAnnulerEdition()
   }
 
-  // ── Couleur de la bulle utilisateur ─────────────────────────────
-  // Sombre : bleu accent existant. Clair : même bleu nuit que la sidebar.
-  const userBubbleClass = isDark ? 'bg-[#4F7EFF] text-white' : 'text-[#EAF2FF]'
-  const userBubbleStyle = !isDark ? { background: '#040d22', border: '1px solid rgba(120,160,210,0.18)' } : undefined
+  // ── Couleurs thème clair — identiques à la sidebar ───────────
+  const DARK_NAV  = '#040d22'   // bleu nuit sidebar
+  const GRAD_USER = 'linear-gradient(135deg, #040d22 0%, #0d2257 50%, #1d4ed8 100%)'
 
   return (
     <div className={`flex gap-2.5 max-w-[84%] animate-fade-in ${isUser ? 'self-end flex-row-reverse' : 'self-start'}`}>
 
-      {/* Avatar */}
-      <div className={`w-[29px] h-[29px] rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5 ${
-        isUser
-          ? isDark ? 'bg-[#1A1A1A] text-[#ECECEC]' : 'bg-[#040d22] text-[#EAF2FF]'
-          : isDark ? 'bg-[#4F7EFF] text-white' : 'bg-[#040d22] text-white'
-      }`}>
+      {/* ── Avatar ────────────────────────────────────────────── */}
+      <div
+        className="w-[29px] h-[29px] rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-white mt-0.5"
+        style={{
+          background: isUser
+            ? isDark ? '#1A1A1A' : DARK_NAV
+            : isDark ? '#4F7EFF' : DARK_NAV,
+          color: isUser && isDark ? '#ECECEC' : 'white',
+        }}
+      >
         {isUser ? initiales : 'R'}
       </div>
 
       <div className={isUser ? 'flex flex-col items-end' : 'flex flex-col items-start'}>
 
-        {/* ── Mode édition (message utilisateur) ───────────────── */}
+        {/* ── Mode édition ──────────────────────────────────────── */}
         {isUser && enEdition ? (
           <div
-            className={`w-full rounded-[20px] rounded-br-[5px] overflow-hidden ${isDark ? 'bg-[#1A1A1A]' : ''}`}
-            style={!isDark ? { background: '#040d22' } : undefined}
+            className="w-full rounded-[20px] rounded-br-[5px] overflow-hidden"
+            style={{ background: isDark ? '#1A1A1A' : DARK_NAV }}
           >
             <textarea
               ref={textareaRef}
@@ -111,19 +122,13 @@ function Message({ msg, isLast, onModifier }) {
               }}
               onKeyDown={handleKeyDown}
               rows={1}
-              style={{ fontSize: '13px', minHeight: '44px', maxHeight: '200px' }}
-              className={`w-full px-4 pt-3 pb-2 bg-transparent border-none outline-none resize-none leading-relaxed ${
-                isDark ? 'text-[#ECECEC]' : 'text-[#EAF2FF]'
-              }`}
+              style={{ fontSize: '13px', minHeight: '44px', maxHeight: '200px', color: '#EAF2FF' }}
+              className="w-full px-4 pt-3 pb-2 bg-transparent border-none outline-none resize-none leading-relaxed"
             />
             <div className="flex justify-end gap-2 px-3 pb-2.5">
               <button
                 onClick={handleAnnulerEdition}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-colors ${
-                  isDark
-                    ? 'bg-[#2A2A2A] text-[#888] hover:text-[#ECECEC]'
-                    : 'bg-white/10 text-[rgba(150,180,220,0.7)] hover:text-white'
-                }`}
+                className="px-3 py-1.5 rounded-lg text-[12px] font-medium bg-white/10 text-white/60 hover:text-white transition-colors"
               >
                 {langue === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
@@ -138,29 +143,32 @@ function Message({ msg, isLast, onModifier }) {
           </div>
 
         ) : (
-          /* ── Bulle normale ────────────────────────────────────── */
+          /* ── Bulle normale ──────────────────────────────────── */
           <div
             className={`group relative px-4 py-3 text-[13px] leading-relaxed ${
               isUser
-                ? `${userBubbleClass} rounded-[20px] rounded-br-[5px]`
+                ? 'text-white rounded-[20px] rounded-br-[5px]'
                 : isDark
                   ? 'bg-[#111] text-[#ECECEC] rounded-[20px] rounded-bl-[5px]'
-                  : 'bg-white text-[#1E2A45] rounded-[20px] rounded-bl-[5px] border border-[#E2E8FF] shadow-[0_1px_3px_rgba(29,110,245,0.06)]'
+                  : 'bg-white text-[#1E2A45] rounded-[20px] rounded-bl-[5px] border border-[#E2E8FF] shadow-sm'
             }`}
-            style={isUser ? userBubbleStyle : undefined}
+            style={isUser
+              ? { background: isDark ? '#4F7EFF' : GRAD_USER }
+              : undefined
+            }
           >
+            {/* Contenu */}
             {isUser ? (
               <p className="whitespace-pre-wrap">{msg.contenu}</p>
             ) : isStreaming ? (
               <p className="whitespace-pre-wrap">{msg.contenu}</p>
             ) : (
               <div className="prose-chat">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {msg.contenu}
-                </ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.contenu}</ReactMarkdown>
               </div>
             )}
 
+            {/* Bouton modifier (au survol, message utilisateur) */}
             {isUser && !isStreaming && onModifier && (
               <button
                 onClick={handleClickModifier}
@@ -175,12 +183,12 @@ function Message({ msg, isLast, onModifier }) {
           </div>
         )}
 
-        {/* ── Actions message IA ────────────────────────────────── */}
+        {/* ── Actions message IA (feedback + copier) ─────────── */}
         {!isUser && !isStreaming && (
           <div className="flex gap-0.5 mt-1.5 ml-1">
             <ActionBtn
               icon={vote === 1 ? 'ph-fill ph-thumbs-up' : 'ph ph-thumbs-up'}
-              label="Utile"
+              label={langue === 'fr' ? 'Utile' : 'Helpful'}
               onClick={() => handleVote(1)}
               active={vote === 1}
               isDark={isDark}
@@ -191,7 +199,12 @@ function Message({ msg, isLast, onModifier }) {
               active={vote === -1}
               isDark={isDark}
             />
-            <ActionBtn icon="ph ph-copy" label="Copier" onClick={handleCopy} isDark={isDark} />
+            <ActionBtn
+              icon="ph ph-copy"
+              label={langue === 'fr' ? 'Copier' : 'Copy'}
+              onClick={handleCopy}
+              isDark={isDark}
+            />
           </div>
         )}
       </div>
@@ -217,10 +230,8 @@ function ActionBtn({ icon, label, onClick, active, isDark }) {
   )
 }
 
-export default memo(Message, (prev, next) => {
-  return (
-    prev.msg.contenu === next.msg.contenu &&
-    prev.msg.id     === next.msg.id &&
-    prev.onModifier === next.onModifier
-  )
-})
+export default memo(Message, (prev, next) =>
+  prev.msg.contenu === next.msg.contenu &&
+  prev.msg.id      === next.msg.id &&
+  prev.onModifier  === next.onModifier
+)
