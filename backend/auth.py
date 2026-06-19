@@ -14,8 +14,13 @@ pwd_context = CryptContext(
 )
 
 def hasher_mot_de_passe(mot_de_passe: str) -> str:
-    return pwd_context.hash(mot_de_passe[:72])
-
+    # On s'assure de convertir en bytes, tronquer, puis hacher
+    # Cela évite que bcrypt essaie de traiter une chaîne trop longue
+    password_bytes = mot_de_passe.encode('utf-8')
+    if len(password_bytes) > 72:
+        mot_de_passe = password_bytes[:72].decode('utf-8', errors='ignore')
+    return pwd_context.hash(mot_de_passe)
+    
 def verifier_mot_de_passe(mot_de_passe: str, hash: str) -> bool:
     return pwd_context.verify(mot_de_passe, hash)
 
