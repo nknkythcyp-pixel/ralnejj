@@ -11,3 +11,5 @@ docx2txt
 openpyxl
 chromadb
 cryptography
+pydantic-settings
+pymysql
