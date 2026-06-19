@@ -15,3 +15,4 @@ pydantic-settings
 pymysql
 langgraph
 langchain-core
+langchain-groq
