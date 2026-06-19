@@ -47,7 +47,7 @@ class HFRouterEmbeddingFunction(EmbeddingFunction):
                 self.url,
                 headers=self.headers,
                 json={"inputs": input, "options": {"wait_for_model": True}},
-                timeout=30,
+                timeout=90,
             )
             response.raise_for_status()
             data = response.json()
@@ -157,7 +157,7 @@ def indexer_documents(forcer: bool = False):
     if tous_ids:
         try:
             # Batch plus petit pour l'API HF (évite timeout / payload trop gros)
-            batch_size = 32
+            batch_size = 16
             for i in range(0, len(tous_ids), batch_size):
                 collection.add(
                     ids=tous_ids[i:i+batch_size],
