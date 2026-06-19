@@ -1,18 +1,23 @@
 fastapi
 uvicorn
 pydantic
-mysql-connector-python
-python-multipart
-python-dotenv
-tavily-python
-openai
-pypdf
-docx2txt
-openpyxl
-chromadb
-cryptography
 pydantic-settings
-pymysql
-langgraph
+python-dotenv
+mysql-connector-python
+cryptography
+
+# LangChain & Groq ecosystem
+langchain
 langchain-core
+langchain-community
 langchain-groq
+
+# LangGraph ecosystem
+langgraph
+
+# RAG & Vector Database (Chroma)
+chromadb
+
+# Outils complémentaires si requis par ton app
+requests
+typing-extensions
