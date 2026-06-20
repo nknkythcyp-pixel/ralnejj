@@ -1,28 +1,36 @@
 """
 auth.py — Authentification JWT pour Ralnejj Santé v2
+Utilise bcrypt directement (sans passlib) pour éviter le conflit
+de version avec chromadb qui exige bcrypt>=4.0.1
 """
 from datetime import datetime, timedelta
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from config import SECRET_KEY, ALGORITHM, TOKEN_EXPIRATION_MINUTES
 
 # ── Hash mot de passe ────────────────────────────────────────────
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12
-)
-
 def hasher_mot_de_passe(mot_de_passe: str) -> str:
-    # On s'assure de convertir en bytes, tronquer, puis hacher
-    # Cela évite que bcrypt essaie de traiter une chaîne trop longue
+    # bcrypt a une limite de 72 bytes — on tronque proprement si besoin
     password_bytes = mot_de_passe.encode('utf-8')
     if len(password_bytes) > 72:
-        mot_de_passe = password_bytes[:72].decode('utf-8', errors='ignore')
-    return pwd_context.hash(mot_de_passe)
-    
+        password_bytes = password_bytes[:72]
+
+    salt = bcrypt.gensalt(rounds=12)
+    hash_bytes = bcrypt.hashpw(password_bytes, salt)
+    return hash_bytes.decode('utf-8')
+
+
 def verifier_mot_de_passe(mot_de_passe: str, hash: str) -> bool:
-    return pwd_context.verify(mot_de_passe, hash)
+    password_bytes = mot_de_passe.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+
+    hash_bytes = hash.encode('utf-8')
+    try:
+        return bcrypt.checkpw(password_bytes, hash_bytes)
+    except (ValueError, TypeError):
+        return False
+
 
 # ── JWT ──────────────────────────────────────────────────────────
 def creer_token(donnees: dict) -> str:
@@ -30,6 +38,7 @@ def creer_token(donnees: dict) -> str:
     expiration = datetime.utcnow() + timedelta(minutes=TOKEN_EXPIRATION_MINUTES)
     contenu.update({"exp": expiration})
     return jwt.encode(contenu, SECRET_KEY, algorithm=ALGORITHM)
+
 
 def decoder_token(token: str) -> dict | None:
     try:
